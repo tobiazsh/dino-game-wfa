@@ -11,8 +11,6 @@
 
   <ItemGroup>
     <None Remove="Resources\dead.png" />
-    <None Remove="Resources\obstacle-1.gif" />
-    <None Remove="Resources\obstacle-2.gif" />
     <None Remove="Resources\running.gif" />
   </ItemGroup>
 
@@ -20,10 +18,10 @@
     <Content Include="Resources\dead.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="Resources\obstacle-1.gif">
+    <Content Include="Resources\cactus.gif">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="Resources\obstacle-2.gif">
+    <Content Include="Resources\cactus_multi.gif">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Resources\running.gif">

@@ -7,36 +7,49 @@ namespace Dino_Game_WFA.GameObjects
     {
         public static readonly Picture TEXTURE_DEAD = (Picture) ResourceHandler.GetResource(Identifier.Of(Globals.NamespaceName, "dead"));
         public static readonly Picture TEXTURE_RUNNING = (Picture)ResourceHandler.GetResource(Identifier.Of(Globals.NamespaceName, "running")); // Get Dino Texture from Resources
-        public Picture TEXTURE;
+        public Picture texture;
 
-        public Dino(float startingPositionY)
+        public Dino(float startingPositionY, float scale)
         {
             Y = startingPositionY;
-            TEXTURE = TEXTURE_RUNNING; // Set initial texture to running
+            _scale = scale;
+            _STARTING_Y = startingPositionY;
+            texture = TEXTURE_RUNNING; // Set initial texture to running
+            TextureChange(TEXTURE_RUNNING);
         }
 
+        private readonly float _STARTING_Y;
+
         public float _velocity = 0f; // pixels / second
-        public float Rotation { get; private set; } = 0f; // degrees
+
+        private readonly float _scale;
 
         public const float GRAVITY = 2000f;         // pixels / second^2
-        public const float JUMP_VELOCITY = -450f;   // initial jump impulse (pixels / second)
-        public const float MAX_FALL_SPEED = 1200f;   // terminal velocity (pixels / second)
+        public const float JUMP_VELOCITY = -525f;   // initial jump impulse (pixels / second)
+        public const float MAX_FALL_SPEED = 1200f;  // terminal velocity (pixels / second)
         public const float ROTATION_UP = -25f;      // degrees when ascending
         public const float ROTATION_DOWN = 85f;     // degrees when descending
         public const float ROTATION_SPEED = 300f;   // degrees per second
 
-        public void Jump()
+        /// <summary>
+        /// Causes the Dino to Jump.
+        /// </summary>
+        /// <param name="allowMultiple">If false, Dino will wait until it's at startingPositionY again OR lower to be able to jump again, or in other words, until the last jump is finished.</param>
+        public void Jump(bool allowMultiple)
         {
-            _velocity = JUMP_VELOCITY;
+            if (!allowMultiple && this.Y < _STARTING_Y)
+                return; // Do not allow multiple jumps
+
+            _velocity = JUMP_VELOCITY * _scale;
         }
 
         /// <summary>
         /// Calculate Dino Position
         /// </summary>
-        /// <param name="minHeight">The min height of the dino's position</param>
-        /// <param name="maxHeight">The max height of the dino's position</param>
+        /// <param name="floorY">The min height of the dino's position</param>
+        /// <param name="ceilY">The max height of the dino's position</param>
         /// <param name="dt">Delta Time since last frame in seconds</param>
-        public void Calculate(float minHeight, float maxHeight, float dt)
+        public void Calculate(float floorY, float ceilY, float dt)
         {
             // Animate Falling/Jumping
             if (dt <= 0f) return; // No time has passed
@@ -48,59 +61,45 @@ namespace Dino_Game_WFA.GameObjects
             Y += _velocity * dt; // Update position
 
             // Clamp to bounds and zero velocity on contact
-            if (Y > minHeight)
+            if (Y > floorY)
             {
-                Y = minHeight;
+                Y = floorY;
                 _velocity = 0f;
             }
-            if (Y < maxHeight)
+            if (Y < ceilY)
             {
-                Y = maxHeight;
+                Y = ceilY;
                 _velocity = 0f;
             }
-
-            // Compute target rotation based on velocity
-            // velocity is negative when going up, positive when going down
-            float vMin = JUMP_VELOCITY;  // most negative velocity
-            float vMax = MAX_FALL_SPEED; // most positive velocity
-            float t = (_velocity - vMin) / (vMax - vMin); // normalized [0, 1]
-            t = Math.Clamp(t, 0f, 1f);
-            float targetRotation = ROTATION_UP + t * (ROTATION_DOWN - ROTATION_UP);
-
-            // Smoothly move rotation toward target
-            float maxDelta = ROTATION_SPEED * dt;
-            float diff = targetRotation - Rotation;
-            if (Math.Abs(diff) <= maxDelta)
-                Rotation = targetRotation;
-            else
-                Rotation += Math.Sign(diff) * maxDelta;
         }
 
         // Implemented from GameObject
         public override void Draw(PaintEventArgs e)
         {
-            if (TEXTURE == null)
-                throw new NullReferenceException("TEXTURE for Bird is null!");
+            if (texture == null)
+                throw new NullReferenceException("TEXTURE for Dino is null!");
             Graphics paintGraphics = e.Graphics;
 
             var state = paintGraphics.Save();
 
             paintGraphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
 
-            // Rotate Bird
-            paintGraphics.TranslateTransform((float)(X + Width / 2), (float)(Y + Height / 2)); // Move to center of Bird
-            paintGraphics.RotateTransform((float)Rotation); // Rotate Bird
-            paintGraphics.TranslateTransform(-(float)(X + Width / 2), -(float)(Y + Height / 2)); // Move back
-
-            // Draw Bird
-            paintGraphics.DrawImage(TEXTURE.Bitmap!, X, Y, Width, Height); // Draw Bird :=)
+            // Draw Dino
+            paintGraphics.DrawImage(texture.Bitmap!, X, Y, Width, Height); // Draw Bird :=)
 
             paintGraphics.Restore(state);
         }
 
+        private void TextureChange(Picture texture)
+        {
+            this.texture = texture;
+            this.Width = texture.Bitmap!.Width * _scale;
+            this.Height = texture.Bitmap!.Height * _scale;
+        }
+
         public void Deadify()
         {
-            TEXTURE = TEXTURE_DEAD; // Get Dead Bird Texture from Resources
+            TextureChange(TEXTURE_DEAD); // Get Dead Bird Texture from Resources
         }
     }
 }

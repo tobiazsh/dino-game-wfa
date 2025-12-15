@@ -4,6 +4,8 @@ using System.Diagnostics;
 
 namespace Dino_Game_WFA.Utils
 {
+
+    // "OBST" = "Obstacle"!!
     public class Game : INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler? PropertyChanged;
@@ -11,43 +13,41 @@ namespace Dino_Game_WFA.Utils
         public static Game Instance = new Game();
 
         // Components
-        private Floor _floor1, _floor2;
-        private Bird _bird;
-        private List<PipePair> _pipes = new List<PipePair>();
+        private Dino _dino = new Dino(0, 1f); // Will be properly initialized in Initialize()
+        private List<Obstacle> _obstacles = new();
 
-        private int _nextPipe = 0;
+        private int _nextObst = 0;
 
         private bool _isGameOver = false;
+
+        private float _scale = 1f;
 
         // Constants
         private const float SCROLL = 200f; // Floor movement speed
 
-        private const int PIPE_SPAWN_MIN_INTERVAL = 250; // Minimum interval between pipes
-        private const int PIPE_SPAWN_MAX_INTERVAL = 600; // Maximum interval between pipes
-        private const int PIPE_MIN_GAP = 120; // Minimum gap between pipes
-        private const int PIPE_MAX_GAP = 450; // Maximum gap between pipes
-        private const int PIPE_MIN_WIDTH = 50; // Minimum pipe width
-        private const int PIPE_MAX_WIDTH = 150; // Maximum pipe width
+        private const int OBST_SPAWN_MIN_INTERVAL = 250; // Minimum interval between pipes
+        private const int OBST_SPAWN_MAX_INTERVAL = 600; // Maximum interval between pipes
+        
+        private float FLOOR_H = 250; // Default floor height, will be set in Initialize()
+        private float _parentH;
+        private float _parentW;
 
-        public Game()
+        public void Initialize(Form parent, float floorH, float scale)
         {
-            _floor1 = new Floor().SetBounds(Globals.GameWindowWidth, Floor.TEXTURE.Size.Height);
-            _floor2 = new Floor().SetBounds(Globals.GameWindowWidth, Floor.TEXTURE.Size.Height);
-            _bird = new Bird(Globals.GameWindowHeight / 2);
-        }
+            _parentH = parent.ClientSize.Height;
+            _parentW = parent.ClientSize.Width;
 
-        public void Initialize(Form parent)
-        {
-            _floor1.SetBounds(parent.ClientSize.Width, Floor.TEXTURE.Size.Height)
-                  .SetPosition(0, parent.ClientSize.Height - _floor1.Height);
+            this._scale = scale;
 
-            _floor2.SetBounds(parent.ClientSize.Width, Floor.TEXTURE.Size.Height)
-                  .SetPosition(_floor1.Width, parent.ClientSize.Height - _floor2.Height);
+            FLOOR_H = floorH;
 
-            _bird.SetPosition(
-                    parent.ClientSize.Width / 4 - Bird.TEXTURE.Size.Width / 2,
-                    parent.ClientSize.Height / 2 - Bird.TEXTURE.Size.Height / 2)
-                .SetBounds(Bird.TEXTURE.Size.Width, Bird.TEXTURE.Size.Height);
+            float startingY = FLOOR_H - (Dino.TEXTURE_RUNNING.Size.Height * _scale);
+            _dino = new Dino(startingY, _scale);
+
+            _dino.SetPosition(
+                    _parentW / 4 - Dino.TEXTURE_RUNNING.Size.Width * _scale / 2, // Assume Dino is running since it will be the case most of the time
+                    startingY)
+                .SetBounds(Dino.TEXTURE_RUNNING.Size.Width * _scale, Dino.TEXTURE_RUNNING.Size.Height * _scale);
         }
 
         // Private Fields
@@ -108,65 +108,49 @@ namespace Dino_Game_WFA.Utils
 
         public void Render(PaintEventArgs e)
         {
-            _pipes.ForEach(pipePair => pipePair.Draw(e));
-            _floor1.Draw(e);
-            _floor2.Draw(e);
-            _bird.Draw(e);
+            RenderFloor(e);
+            _obstacles.ForEach(obst => obst.Draw(e));
+            _dino.Draw(e);
+        }
+
+        private void RenderFloor(PaintEventArgs e)
+        {
+            Graphics graphics = e.Graphics;
+
+            // Draw Floor
+            graphics.FillRectangle(Brushes.SaddleBrown, 0, FLOOR_H, _parentW, _parentH - FLOOR_H);
         }
 
         public void UpdateState(Form sender, float dt)
         {
-            ScrollPipes(sender, dt);
+            ScrollObstacles(sender, dt);
             CheckScored();
-            ScrollFloors(dt);
-            UpdateBird(dt);
+            UpdateDino(dt);
         }
 
-        private void ScrollFloors(float dt)
+        private void ScrollObstacles(Form sender, float dt)
         {
-            _floor1.Scroll(SCROLL * dt);
-            _floor2.Scroll(SCROLL * dt);
-
-            // Check floor out of bounds and reposition
-            if (_floor1.X + _floor1.Width <= 0)
+            if (_nextObst == 0)
             {
-                _floor1.SetPosition(_floor2.X + _floor2.Width, _floor1.Y);
+                _obstacles.Add(Obstacle.CreateRandomObstacle(_parentW, FLOOR_H, _scale));
+
+                _nextObst = new Random().Next(OBST_SPAWN_MIN_INTERVAL, OBST_SPAWN_MAX_INTERVAL);
             }
 
-            // Check floor out of bounds and reposition
-            if (_floor2.X + _floor2.Width <= 0)
-            {
-                _floor2.SetPosition(_floor1.X + _floor1.Width, _floor2.Y);
-            }
-        }
+            _nextObst--;
 
-        private void ScrollPipes(Form sender, float dt)
-        {
-            if (_nextPipe == 0)
-            {
-                _pipes.Add(PipePair.GenerateRandom(
-                    PIPE_MIN_GAP, 
-                    PIPE_MAX_GAP, 
-                    PIPE_MIN_WIDTH, 
-                    PIPE_MAX_WIDTH, 
-                    sender.ClientSize.Height, sender.ClientSize.Width));
+            _obstacles.ForEach(obstacle => obstacle.Scroll(SCROLL * dt));
 
-                _nextPipe = new Random().Next(PIPE_SPAWN_MIN_INTERVAL, PIPE_SPAWN_MAX_INTERVAL);
-            }
-
-            _nextPipe--;
-
-            _pipes.ForEach(pipePair => pipePair.Scroll(SCROLL * dt));
-
-            _pipes.Where(pipePair => pipePair.IsCompletelyOutOfBounds(0, true))
+            _obstacles.Where(obstacle => obstacle.IsCompletelyOutOfBounds(0, true))
                  .ToList()
-                 .ForEach(pipePair =>
+                 .ForEach(obstacle =>
                  {
-                     _pipes.Remove(pipePair);
+                     _obstacles.Remove(obstacle);
                  }); // Remove out of bounds pipes
 
-            if (_pipes.Any(pipePair => pipePair.IntersectsWith(_bird)))
+            if (_obstacles.Any(obstacle => obstacle.IntersectsWith(_dino)))
             {
+                _dino.Deadify();
                 GameOver();
             }
         }
@@ -178,20 +162,19 @@ namespace Dino_Game_WFA.Utils
             Achievements.Instance.Highscore = Math.Max(Achievements.Instance.Highscore, Score);
         }
 
-        private void UpdateBird(float dt)
+        private void UpdateDino(float dt)
         {
-            _bird.Calculate(_floor1.Y - _bird.Height, 0, dt);
+            _dino.Calculate(FLOOR_H - _dino.Height, 0, dt);
         }
 
         private void CheckScored()
         {
-            foreach (var pipePair in _pipes)
+            foreach (var obstacle in _obstacles)
             {
-                if (!pipePair.HasBeenScored && pipePair.CheckScore(_bird))
+                obstacle.CheckScored(_dino, () =>
                 {
                     Score++;
-                    pipePair.HasBeenScored = true;
-                }
+                });
             }
         }
 
@@ -200,24 +183,22 @@ namespace Dino_Game_WFA.Utils
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
-        public void Jump()
+        public void Jump(bool allowMultiple)
         {
-            _bird.Jump();
+            _dino.Jump(allowMultiple);
         }
 
         public void Reset()
         {
-            _pipes.Clear();
-            _nextPipe = 0;
+            _obstacles.Clear();
+            _nextObst = 0;
 
             _score = 0;
             _isGameOver = false;
             _isHalted = true;
 
             // Recreate entities so they start fresh. Positions will be set in Initialize(parent) afterwards.
-            _bird = new Bird(Globals.GameWindowHeight / 2);
-            _floor1 = new Floor();
-            _floor2 = new Floor();
+            _dino = new Dino(_parentH / 2, _scale);
 
             // Notify bindings about property changes so UI updates correctly
             OnPropertyChanged(nameof(Score));

@@ -9,5 +9,9 @@
 
         public static readonly int GameWindowWidth = 1400;
         public static readonly int GameWindowHeight = 900;
+
+        public static readonly float GroundY = GameWindowHeight - 200f; // Y position of the ground
+
+        public static readonly float Scale = 1.5f; // Scale factor for game objects
     }
 }

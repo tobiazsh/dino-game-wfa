@@ -20,7 +20,7 @@ namespace Dino_Game_WFA
             this.BackColor = Color.SkyBlue;
             this.Text = "Dinosaur Game - Game Window";
 
-            Game.Instance.Initialize(this);
+            Game.Instance.Initialize(this, Globals.GroundY, Globals.Scale);
 
             // Events
             this.KeyDown += HandleKeyDown;
@@ -99,7 +99,7 @@ namespace Dino_Game_WFA
 
             if (!Game.Instance.IsHalted && e.KeyCode == Keys.Space)
             {
-                // Handle Jump
+                Game.Instance.Jump(false); // Make the dino jump on Space key
             }
 
             if (Game.Instance.IsHalted && !Game.Instance.IsGameOver)
@@ -111,7 +111,7 @@ namespace Dino_Game_WFA
             if (Game.Instance.IsGameOver) // If game over, any key restarts
             {
                 Game.Instance.Reset();
-                Game.Instance.Initialize(this);
+                Game.Instance.Initialize(this, Globals.GroundY, Globals.Scale);
                 this.Invalidate(); // Redraw the game window
             }
         }

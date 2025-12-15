@@ -12,8 +12,8 @@ namespace Dino_Game_WFA.Resource
             Resources = Resources.AddRange(new Resource[]
             {
                 new Picture(Identifier.Of(Globals.NamespaceName, "dead"), "Resources/dead.png").Load(),
-                new Picture(Identifier.Of(Globals.NamespaceName, "obstacle-1"), "Resources/obstacle-1.gif").Load(),
-                new Picture(Identifier.Of(Globals.NamespaceName, "obstacle-2"), "Resources/obstacle-2.gif").Load(),
+                new Picture(Identifier.Of(Globals.NamespaceName, "cactus"), "Resources/cactus.gif").Load(),
+                new Picture(Identifier.Of(Globals.NamespaceName, "cactus_multi"), "Resources/cactus_multi.gif").Load(),
                 new Picture(Identifier.Of(Globals.NamespaceName, "running"), "Resources/running.gif").Load(),
             });
         }
