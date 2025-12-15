@@ -31,10 +31,10 @@ namespace Dino_Game_WFA.GameObjects
         }
 
         /// <summary>
-        /// Calculate Bird Position
+        /// Calculate Dino Position
         /// </summary>
-        /// <param name="minHeight">The min height of the bird's position</param>
-        /// <param name="maxHeight">The max height of the bird's position</param>
+        /// <param name="minHeight">The min height of the dino's position</param>
+        /// <param name="maxHeight">The max height of the dino's position</param>
         /// <param name="dt">Delta Time since last frame in seconds</param>
         public void Calculate(float minHeight, float maxHeight, float dt)
         {

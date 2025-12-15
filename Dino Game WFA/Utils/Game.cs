@@ -1,8 +1,6 @@
 ﻿using Dino_Game_WFA.GameObjects;
-using Dino_Game_WFA.Resource;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Runtime.Versioning;
 
 namespace Dino_Game_WFA.Utils
 {
@@ -12,34 +10,44 @@ namespace Dino_Game_WFA.Utils
 
         public static Game Instance = new Game();
 
-        private static readonly int FLOOR_HEIGHT = 160;
-
         // Components
-        private Dino _dino;
-        private Rectangle _floor = new Rectangle(0, Globals.GameWindowHeight - FLOOR_HEIGHT, Globals.GameWindowWidth, FLOOR_HEIGHT);
-        private List<Obstacle> _obstacles = new List<Obstacle>();
+        private Floor _floor1, _floor2;
+        private Bird _bird;
+        private List<PipePair> _pipes = new List<PipePair>();
 
-        private int _nextObstacle = 0;
+        private int _nextPipe = 0;
 
         private bool _isGameOver = false;
 
         // Constants
-        private const float SCROLL = 200f; // Movement speed
+        private const float SCROLL = 200f; // Floor movement speed
 
-        private const int OBSTACLE_SPAWN_MIN_INTERVAL = 250; // Minimum interval between pipes
-        private const int OBSTACLE_SPAWN_MAX_INTERVAL = 600; // Maximum interval between pipes
+        private const int PIPE_SPAWN_MIN_INTERVAL = 250; // Minimum interval between pipes
+        private const int PIPE_SPAWN_MAX_INTERVAL = 600; // Maximum interval between pipes
+        private const int PIPE_MIN_GAP = 120; // Minimum gap between pipes
+        private const int PIPE_MAX_GAP = 450; // Maximum gap between pipes
+        private const int PIPE_MIN_WIDTH = 50; // Minimum pipe width
+        private const int PIPE_MAX_WIDTH = 150; // Maximum pipe width
 
         public Game()
         {
-            _dino = new Dino(Globals.GameWindowHeight / 2);
+            _floor1 = new Floor().SetBounds(Globals.GameWindowWidth, Floor.TEXTURE.Size.Height);
+            _floor2 = new Floor().SetBounds(Globals.GameWindowWidth, Floor.TEXTURE.Size.Height);
+            _bird = new Bird(Globals.GameWindowHeight / 2);
         }
 
         public void Initialize(Form parent)
         {
-            _dino.SetPosition(
-                    parent.ClientSize.Width / 4 - Dino.TEXTURE_RUNNING.Size.Width / 2,
-                    parent.ClientSize.Height / 2 - Dino.TEXTURE_RUNNING.Size.Height / 2)
-                .SetBounds(Dino.TEXTURE_RUNNING.Size.Width, Dino.TEXTURE_RUNNING.Size.Height);
+            _floor1.SetBounds(parent.ClientSize.Width, Floor.TEXTURE.Size.Height)
+                  .SetPosition(0, parent.ClientSize.Height - _floor1.Height);
+
+            _floor2.SetBounds(parent.ClientSize.Width, Floor.TEXTURE.Size.Height)
+                  .SetPosition(_floor1.Width, parent.ClientSize.Height - _floor2.Height);
+
+            _bird.SetPosition(
+                    parent.ClientSize.Width / 4 - Bird.TEXTURE.Size.Width / 2,
+                    parent.ClientSize.Height / 2 - Bird.TEXTURE.Size.Height / 2)
+                .SetBounds(Bird.TEXTURE.Size.Width, Bird.TEXTURE.Size.Height);
         }
 
         // Private Fields
@@ -100,45 +108,64 @@ namespace Dino_Game_WFA.Utils
 
         public void Render(PaintEventArgs e)
         {
-            _obstacles.ForEach(pipePair => pipePair.Draw(e));
-            DrawFloor(e.Graphics);
-            _dino.Draw(e);
+            _pipes.ForEach(pipePair => pipePair.Draw(e));
+            _floor1.Draw(e);
+            _floor2.Draw(e);
+            _bird.Draw(e);
         }
 
         public void UpdateState(Form sender, float dt)
         {
-            ScrollObstacles(sender, dt);
+            ScrollPipes(sender, dt);
             CheckScored();
-            UpdateDino(dt);
+            ScrollFloors(dt);
+            UpdateBird(dt);
         }
 
-        private void DrawFloor(Graphics gr)
+        private void ScrollFloors(float dt)
         {
-            gr.DrawRectangle(Pens.DarkSlateGray, _floor);
-        }
+            _floor1.Scroll(SCROLL * dt);
+            _floor2.Scroll(SCROLL * dt);
 
-        private void ScrollObstacles(Form sender, float dt)
-        {
-            if (_nextObstacle == 0)
+            // Check floor out of bounds and reposition
+            if (_floor1.X + _floor1.Width <= 0)
             {
-                int obstacleType = new Random().Next(0, 2);
-                _obstacles.Add(new Obstacle(obstacleType == 1 ? Obstacle.ObstacleType.OBS1 : Obstacle.ObstacleType.OBS2));
-
-                _nextObstacle = new Random().Next(OBSTACLE_SPAWN_MIN_INTERVAL, OBSTACLE_SPAWN_MAX_INTERVAL);
+                _floor1.SetPosition(_floor2.X + _floor2.Width, _floor1.Y);
             }
 
-            _nextObstacle--;
+            // Check floor out of bounds and reposition
+            if (_floor2.X + _floor2.Width <= 0)
+            {
+                _floor2.SetPosition(_floor1.X + _floor1.Width, _floor2.Y);
+            }
+        }
 
-            _obstacles.ForEach(obstacle => obstacle.Scroll(SCROLL * dt));
+        private void ScrollPipes(Form sender, float dt)
+        {
+            if (_nextPipe == 0)
+            {
+                _pipes.Add(PipePair.GenerateRandom(
+                    PIPE_MIN_GAP, 
+                    PIPE_MAX_GAP, 
+                    PIPE_MIN_WIDTH, 
+                    PIPE_MAX_WIDTH, 
+                    sender.ClientSize.Height, sender.ClientSize.Width));
 
-            _obstacles.Where(obstacle => obstacle.IsCompletelyOutOfBounds(0, true))
+                _nextPipe = new Random().Next(PIPE_SPAWN_MIN_INTERVAL, PIPE_SPAWN_MAX_INTERVAL);
+            }
+
+            _nextPipe--;
+
+            _pipes.ForEach(pipePair => pipePair.Scroll(SCROLL * dt));
+
+            _pipes.Where(pipePair => pipePair.IsCompletelyOutOfBounds(0, true))
                  .ToList()
-                 .ForEach(obstacle =>
+                 .ForEach(pipePair =>
                  {
-                     _obstacles.Remove(obstacle);
+                     _pipes.Remove(pipePair);
                  }); // Remove out of bounds pipes
 
-            if (_obstacles.Any(obstacle => obstacle.IntersectsWith(_dino)))
+            if (_pipes.Any(pipePair => pipePair.IntersectsWith(_bird)))
             {
                 GameOver();
             }
@@ -151,17 +178,20 @@ namespace Dino_Game_WFA.Utils
             Achievements.Instance.Highscore = Math.Max(Achievements.Instance.Highscore, Score);
         }
 
-        private void UpdateDino(float dt)
+        private void UpdateBird(float dt)
         {
-            _dino.Calculate(Globals.GameWindowHeight - FLOOR_HEIGHT + Dino.TEXTURE_RUNNING.Size.Height, Globals.GameWindowHeight / 2, dt);
+            _bird.Calculate(_floor1.Y - _bird.Height, 0, dt);
         }
 
         private void CheckScored()
         {
-            foreach (var obstacle in _obstacles)
+            foreach (var pipePair in _pipes)
             {
-                if (obstacle.CheckScored(_dino.X))
+                if (!pipePair.HasBeenScored && pipePair.CheckScore(_bird))
+                {
                     Score++;
+                    pipePair.HasBeenScored = true;
+                }
             }
         }
 
@@ -172,27 +202,27 @@ namespace Dino_Game_WFA.Utils
 
         public void Jump()
         {
-            _dino.Jump();
+            _bird.Jump();
         }
 
         public void Reset()
         {
-            _obstacles.Clear();
-            _nextObstacle = 0;
+            _pipes.Clear();
+            _nextPipe = 0;
 
             _score = 0;
             _isGameOver = false;
             _isHalted = true;
 
             // Recreate entities so they start fresh. Positions will be set in Initialize(parent) afterwards.
-            _dino = new Dino(Globals.GameWindowHeight - FLOOR_HEIGHT + Dino.TEXTURE_RUNNING.Size.Height);
+            _bird = new Bird(Globals.GameWindowHeight / 2);
+            _floor1 = new Floor();
+            _floor2 = new Floor();
 
             // Notify bindings about property changes so UI updates correctly
             OnPropertyChanged(nameof(Score));
             OnPropertyChanged(nameof(IsGameOver));
             OnPropertyChanged(nameof(IsHalted));
-
-            // ConsoleWriter.DebugLine("Game reset.");
         }
     }
 }

@@ -1,5 +1,3 @@
-using Dino_Game_WFA.Resource;
-
 namespace Dino_Game_WFA
 {
     internal static class Program
@@ -12,11 +10,8 @@ namespace Dino_Game_WFA
         {
             // To customize application configuration such as set high DPI settings or default font,
             // see https://aka.ms/applicationconfiguration.
-
-            ResourceHandler.LoadDefaultResources();
-
             ApplicationConfiguration.Initialize();
-            Application.Run(new MainWindow());
+            Application.Run(new Form1());
         }
     }
 }
