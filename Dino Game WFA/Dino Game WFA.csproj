@@ -11,6 +11,8 @@
 
   <ItemGroup>
     <None Remove="Resources\dead.png" />
+    <None Remove="Resources\README.md" />
+    <None Remove="Resources\RESOURCE-LICENSE.txt" />
     <None Remove="Resources\running.gif" />
   </ItemGroup>
 
@@ -24,6 +26,8 @@
     <Content Include="Resources\cactus_multi.gif">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="Resources\README.md" />
+    <Content Include="Resources\RESOURCE-LICENSE.txt" />
     <Content Include="Resources\running.gif">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
