@@ -18,6 +18,10 @@ I was told to download the resources from this link: https://www.mooict.com/c-tu
 
 GitHub Project: https://github.com/mooict/T-Rex-Endless-Runner-Game-in-Windows-Form
 
+## Copied
+
+Most of the game's logic was directly copied from the [Flappy Bird Game](https://github.com/tobiazsh/flappy-birds-wfa) I made earlier - this was an assignment too.
+
 ## Specifications
 
 - Windows Forms Application (WFA)
